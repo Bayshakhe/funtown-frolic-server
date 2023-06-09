@@ -47,7 +47,18 @@ app.get('/classes', async(req,res) => {
     const query ={
         status: 'approved'
     }
-    const result = await classesCollections.find(query).toArray();
+    const options = {
+        sort:{'price': -1}
+    }
+    const result = await classesCollections.find(query, options).toArray();
+    res.send(result)
+})
+app.get('/instructors', async(req,res) => {
+    const query = {}
+    const options = {
+        sort:{'enrolled': -1}
+    }
+    const result = await classesCollections.find(query, options).toArray();
     res.send(result)
 })
 
