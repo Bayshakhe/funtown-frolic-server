@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
+const jwt = require('jsonwebtoken')
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -25,16 +26,35 @@ const client = new MongoClient(uri, {
   }
 });
 
+const usersCollections = client.db('funtownFrolicDb').collection('users')
+const classesCollections = client.db('funtownFrolicDb').collection('classes')
+
 async function run() {
   try {
-
-
-
-
-    
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // Send a ping to confirm a successful connection
+
+app.post('/users', async(req,res) => {
+    const user = req.body;
+    console.log(user)
+    // const user = {email: email}
+    const result = await usersCollections.insertOne(user)
+    res.send(result)
+})
+
+app.get('/classes', async(req,res) => {
+    const query ={
+        status: 'approved'
+    }
+    const result = await classesCollections.find(query).toArray();
+    res.send(result)
+})
+
+
+
+
+
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
