@@ -10,8 +10,8 @@ const corsOptions = {
     origin: '*',
     credentials: true,
     optionSuccessStatus: 200,
-  }
-  app.use(cors(corsOptions))
+}
+app.use(cors(corsOptions))
 app.use(express.json());
 
 app.get('/', (req, res) => {
@@ -31,6 +31,21 @@ const client = new MongoClient(uri, {
     }
 });
 
+const verifyJwt = (req, res, next) => {
+    const authorization = req.headers.authorization;
+    if (!authorization) {
+        return res.status(401).send({ error: true, message: "Unauthorized access" })
+    }
+    const token = authorization.split(' ')[1]
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).send({ error: true, message: "Unauthorized access" })
+        }
+        req.decoded = decoded
+        next()
+    })
+}
+
 const usersCollections = client.db('funtownFrolicDb').collection('users')
 const classesCollections = client.db('funtownFrolicDb').collection('classes')
 
@@ -41,10 +56,10 @@ async function run() {
         // Send a ping to confirm a successful connection
 
         // generate jwt token
-        app.post('/jwt', (req,res) => {
+        app.post('/jwt', (req, res) => {
             const email = req.body;
-            const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h'})
-            res.send({token})
+            const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+            res.send({ token })
         })
 
         // user related apis
@@ -81,13 +96,14 @@ async function run() {
             const result = await classesCollections.find(query, options).toArray();
             res.send(result)
         })
-        app.get('/instructor', async(req,res) => {
-            const email = req.query.email;
-            const query = {
-                instructorEmail: email
-            }
-            const result = await classesCollections.find(query).toArray()
+        app.get('/instructor', async (req, res) => {
+            const result = await classesCollections.find().toArray()
             res.send(result)
+        })
+        app.get('/instructor/class', async (req, res) => {
+            const query = { instructorEmail: req.query.email };
+            const result = await classesCollections.find(query).toArray();
+            res.send(result);
         })
 
 
