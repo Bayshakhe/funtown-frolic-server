@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken')
 const app = express();
 const port = process.env.PORT || 5000;
@@ -48,6 +48,7 @@ const verifyJwt = (req, res, next) => {
 
 const usersCollections = client.db('funtownFrolicDb').collection('users')
 const classesCollections = client.db('funtownFrolicDb').collection('classes')
+const selectedCollections = client.db('funtownFrolicDb').collection('selects')
 
 async function run() {
     try {
@@ -100,10 +101,54 @@ async function run() {
             const result = await classesCollections.find().toArray()
             res.send(result)
         })
-        app.get('/instructor/class', async (req, res) => {
-            const query = { instructorEmail: req.query.email };
+        app.get('/instructor/:class', async (req, res) => {
+            const id = req.params.class
+            const singleClass = await classesCollections.findOne({_id: new ObjectId(id)})
+            const query = { instructorEmail: singleClass.instructorEmail };
             const result = await classesCollections.find(query).toArray();
+            // console.log(result)
             res.send(result);
+        })
+
+        // select classes related apis
+        app.post('/selected', async(req,res) => {
+            const selectClass = req.body;
+            const result = await selectedCollections.insertOne(selectClass)
+            res.send(result)
+        })
+        app.get('/selected', verifyJwt, async(req,res) => {
+            const selectEmail = req.query.email;
+            const decodedEmail = req.decoded.email;
+            if(!selectEmail){
+                res.send([])
+            }
+            if(selectEmail !== decodedEmail){
+                return res.status(403).send({error: true, message: 'Forbidden Access'})
+            }
+            const query = {studentEmail: selectEmail}
+            const result = await selectedCollections.find(query).toArray()
+            res.send(result)
+        })
+
+        // instructor dashboard related apis
+        app.get('/myClass', async(req,res) => {
+            const email = req.query.email;
+            // const decodedEmail = req.decoded.email;
+            // if(!selectEmail){
+            //     res.send([])
+            // }
+            // if(selectEmail !== decodedEmail){
+            //     return res.status(403).send({error: true, message: 'Forbidden Access'})
+            // }
+            // console.log(email)
+            const query = {instructorEmail: email}
+            const result = await classesCollections.find(query).toArray()
+            res.send(result)
+        })
+        app.post('/addClass', async(req,res) => {
+            const classInfo = req.body;
+            const result = await classesCollections.insertOne(classInfo)
+            res.send(result)
         })
 
 
