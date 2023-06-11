@@ -75,6 +75,10 @@ async function run() {
             const result = await usersCollections.insertOne(user)
             res.send(result)
         })
+        app.get('/users', async (req, res) => {
+            const result = await usersCollections.find().toArray()
+            res.send(result)
+        })
 
         // class related apis
         app.get('/classes', async (req, res) => {
@@ -85,6 +89,14 @@ async function run() {
                 sort: { 'enrolled': -1 }
             }
             const result = await classesCollections.find(query, options).toArray();
+            res.send(result)
+        })
+        app.get('/allClasses', async (req, res) => {
+            const query = {}
+            const options = {
+                sort: { _id: -1 }
+            }
+            const result = await classesCollections.find(query,options).toArray();
             res.send(result)
         })
 
