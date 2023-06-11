@@ -33,6 +33,7 @@ const client = new MongoClient(uri, {
 
 const verifyJwt = (req, res, next) => {
     const authorization = req.headers.authorization;
+    // console.log(req.headers)
     if (!authorization) {
         return res.status(401).send({ error: true, message: "Unauthorized access" })
     }
@@ -44,6 +45,34 @@ const verifyJwt = (req, res, next) => {
         req.decoded = decoded
         next()
     })
+}
+
+const verifyAdmin = async (req,res,next) => {
+    const email = req.decoded.email;
+    const query = {email: email}
+    const user = await usersCollections.findOne(query);
+    if(user?.role !== 'admin'){
+        res.send({error: true, message: 'Forbidden Access'})
+    }
+    next()
+}
+const verifyInstructor = async (req,res,next) => {
+    const email = req.decoded.email;
+    const query = {email: email}
+    const user = await usersCollections.findOne(query);
+    if(user?.role !== 'instructor'){
+        res.send({error: true, message: 'Forbidden Access'})
+    }
+    next()
+}
+const verifyStudent = async (req,res,next) => {
+    const email = req.decoded.email;
+    const query = {email: email}
+    const user = await usersCollections.findOne(query);
+    if(user?.role !== 'student'){
+        res.send({error: true, message: 'Forbidden Access'})
+    }
+    next()
 }
 
 const usersCollections = client.db('funtownFrolicDb').collection('users')
@@ -117,7 +146,7 @@ async function run() {
             const result = await classesCollections.find(query, options).toArray();
             res.send(result)
         })
-        app.get('/allClasses', async (req, res) => {
+        app.get('/allClasses', verifyJwt, verifyAdmin, async (req, res) => {
             const query = {}
             const options = {
                 sort: { _id: -1 }
