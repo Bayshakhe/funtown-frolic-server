@@ -80,6 +80,32 @@ async function run() {
             res.send(result)
         })
 
+        // admin related apis
+        app.patch('/users/admin/:id', async (req,res) => {
+            const id = req.params.id;
+            const filter = {_id: new ObjectId(id)}
+            const updateDoc = {
+                $set:{
+                    role: "admin"
+                }
+            }
+            const result = await usersCollections.updateOne(filter, updateDoc)
+            res.send(result)
+        })
+
+        // instructor related apis
+        app.patch('/users/instructor/:id', async (req,res) => {
+            const id = req.params.id;
+            const filter = {_id: new ObjectId(id)}
+            const updateDoc = {
+                $set:{
+                    role: "instructor"
+                }
+            }
+            const result = await usersCollections.updateOne(filter, updateDoc)
+            res.send(result)
+        })
+
         // class related apis
         app.get('/classes', async (req, res) => {
             const query = {
