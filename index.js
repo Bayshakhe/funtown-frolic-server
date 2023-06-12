@@ -18,19 +18,6 @@ app.get('/', (req, res) => {
     res.send("It's Funtown")
 })
 
-
-
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.qlguchx.mongodb.net/?retryWrites=true&w=majority`;
-
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
-const client = new MongoClient(uri, {
-    serverApi: {
-        version: ServerApiVersion.v1,
-        strict: true,
-        deprecationErrors: true,
-    }
-});
-
 const verifyJwt = (req, res, next) => {
     const authorization = req.headers.authorization;
     // console.log(req.headers)
@@ -47,33 +34,17 @@ const verifyJwt = (req, res, next) => {
     })
 }
 
-const verifyAdmin = async (req,res,next) => {
-    const email = req.decoded.email;
-    const query = {email: email}
-    const user = await usersCollections.findOne(query);
-    if(user?.role !== 'admin'){
-        res.send({error: true, message: 'Forbidden Access'})
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.qlguchx.mongodb.net/?retryWrites=true&w=majority`;
+
+// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+const client = new MongoClient(uri, {
+    serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
     }
-    next()
-}
-const verifyInstructor = async (req,res,next) => {
-    const email = req.decoded.email;
-    const query = {email: email}
-    const user = await usersCollections.findOne(query);
-    if(user?.role !== 'instructor'){
-        res.send({error: true, message: 'Forbidden Access'})
-    }
-    next()
-}
-const verifyStudent = async (req,res,next) => {
-    const email = req.decoded.email;
-    const query = {email: email}
-    const user = await usersCollections.findOne(query);
-    if(user?.role !== 'student'){
-        res.send({error: true, message: 'Forbidden Access'})
-    }
-    next()
-}
+});
+
 
 const usersCollections = client.db('funtownFrolicDb').collection('users')
 const classesCollections = client.db('funtownFrolicDb').collection('classes')
@@ -92,6 +63,34 @@ async function run() {
             res.send({ token })
         })
 
+        const verifyAdmin = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email }
+            const user = await usersCollections.findOne(query);
+            if (user?.role !== 'admin') {
+                return res.status(403).send({ error: true, message: 'Forbidden Access' })
+            }
+            next()
+        }
+        const verifyInstructor = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email }
+            const user = await usersCollections.findOne(query);
+            if (user?.role !== 'instructor') {
+                return res.status(403).send({ error: true, message: 'Forbidden Access' })
+            }
+            next()
+        }
+        const verifyStudent = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email }
+            const user = await usersCollections.findOne(query);
+            if (user?.role !== 'student') {
+                res.send({ error: true, message: 'Forbidden Access' })
+            }
+            next()
+        }
+
         // user related apis
         app.post('/users', async (req, res) => {
             const user = req.body;
@@ -104,17 +103,28 @@ async function run() {
             const result = await usersCollections.insertOne(user)
             res.send(result)
         })
-        app.get('/users', async (req, res) => {
+        app.get('/users', verifyJwt, verifyAdmin, async (req, res) => {
             const result = await usersCollections.find().toArray()
             res.send(result)
         })
 
         // admin related apis
-        app.patch('/users/admin/:id', async (req,res) => {
+        app.get('/users/admin/:email', verifyJwt, async(req,res) => {
+            const email = req.params.email;
+            const query = {email: email}
+            if(req.decoded.email !== email){
+              return res.send({admin: false})
+            }
+            const user = await usersCollections.findOne(query);
+            const result = {admin: user?.role === 'admin'}
+            return res.send(result)
+          })
+
+        app.patch('/users/admin/:id', async (req, res) => {
             const id = req.params.id;
-            const filter = {_id: new ObjectId(id)}
+            const filter = { _id: new ObjectId(id) }
             const updateDoc = {
-                $set:{
+                $set: {
                     role: "admin"
                 }
             }
@@ -123,11 +133,11 @@ async function run() {
         })
 
         // instructor related apis
-        app.patch('/users/instructor/:id', async (req,res) => {
+        app.patch('/users/instructor/:id', async (req, res) => {
             const id = req.params.id;
-            const filter = {_id: new ObjectId(id)}
+            const filter = { _id: new ObjectId(id) }
             const updateDoc = {
-                $set:{
+                $set: {
                     role: "instructor"
                 }
             }
@@ -151,11 +161,22 @@ async function run() {
             const options = {
                 sort: { _id: -1 }
             }
-            const result = await classesCollections.find(query,options).toArray();
-            res.send(result)
+            const result = await classesCollections.find(query, options).toArray();
+            return res.send(result)
         })
 
         // instructor related apis
+        app.get('/users/instructor/:email', verifyJwt, async(req,res) => {
+            const email = req.params.email;
+            const query = {email: email}
+            if(req.decoded.email !== email){
+              return res.send({instructor: false})
+            }
+            const user = await usersCollections.findOne(query);
+            const result = {instructor: user?.role === 'instructor'}
+            return res.send(result)
+          })
+
         app.get('/instructors', async (req, res) => {
             const query = {}
             const options = {
@@ -170,7 +191,7 @@ async function run() {
         })
         app.get('/instructor/:class', async (req, res) => {
             const id = req.params.class
-            const singleClass = await classesCollections.findOne({_id: new ObjectId(id)})
+            const singleClass = await classesCollections.findOne({ _id: new ObjectId(id) })
             const query = { instructorEmail: singleClass.instructorEmail };
             const result = await classesCollections.find(query).toArray();
             // console.log(result)
@@ -178,28 +199,28 @@ async function run() {
         })
 
         // select classes related apis
-        app.post('/selected', async(req,res) => {
+        app.post('/selected', async (req, res) => {
             const selectClass = req.body;
             const result = await selectedCollections.insertOne(selectClass)
             res.send(result)
         })
-        app.get('/selected', verifyJwt, async(req,res) => {
+        app.get('/selected', verifyJwt, async (req, res) => {
             const selectEmail = req.query.email;
             const decodedEmail = req.decoded.email;
-            if(!selectEmail){
+            if (!selectEmail) {
                 res.send([])
             }
-            if(selectEmail !== decodedEmail){
-                return res.status(403).send({error: true, message: 'Forbidden Access'})
+            if (selectEmail !== decodedEmail) {
+                return res.status(403).send({ error: true, message: 'Forbidden Access' })
             }
-            const query = {studentEmail: selectEmail}
+            const query = { studentEmail: selectEmail }
             const result = await selectedCollections.find(query).toArray()
             res.send(result)
         })
 
         // instructor dashboard related apis
-        app.get('/myClass', async(req,res) => {
-            const email = req.query.email;
+        app.get('/myClass/:email', verifyJwt, verifyInstructor, async (req, res) => {
+            const email = req.params.email;
             // const decodedEmail = req.decoded.email;
             // if(!selectEmail){
             //     res.send([])
@@ -208,11 +229,11 @@ async function run() {
             //     return res.status(403).send({error: true, message: 'Forbidden Access'})
             // }
             // console.log(email)
-            const query = {instructorEmail: email}
+            const query = { instructorEmail: email }
             const result = await classesCollections.find(query).toArray()
             res.send(result)
         })
-        app.post('/addClass', async(req,res) => {
+        app.post('/addClass', async (req, res) => {
             const classInfo = req.body;
             const result = await classesCollections.insertOne(classInfo)
             res.send(result)
