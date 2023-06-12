@@ -164,6 +164,39 @@ async function run() {
             const result = await classesCollections.find(query, options).toArray();
             return res.send(result)
         })
+        app.patch('/allClasses/approve/:id', async(req,res)=> {
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)}
+            const options = {
+                $set:{
+                    status: 'approved'
+                }
+            }
+            const result = await classesCollections.updateOne(query,options);
+            res.send(result)
+        })
+        app.patch('/allClasses/deny/:id', async(req,res)=> {
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)}
+            const options = {
+                $set:{
+                    status: 'denied'
+                }
+            }
+            const result = await classesCollections.updateOne(query,options);
+            res.send(result)
+        })
+        app.patch('/allClasses/feedback/:id', async(req,res)=> {
+            const id = req.params.id;
+            const text = req.body;
+            // console.log(text)
+            const query = {_id: new ObjectId(id)}
+            const options = {
+                $set: text
+            }
+            const result = await classesCollections.updateOne(query,options);
+            res.send(result)
+        })
 
         // instructor related apis
         app.get('/users/instructor/:email', verifyJwt, async(req,res) => {
@@ -202,7 +235,7 @@ async function run() {
         app.post('/selected', async (req, res) => {
             const selectClass = req.body;
             const result = await selectedCollections.insertOne(selectClass)
-            res.send(result)
+            return res.send(result)
         })
         app.get('/selected', verifyJwt, async (req, res) => {
             const selectEmail = req.query.email;
