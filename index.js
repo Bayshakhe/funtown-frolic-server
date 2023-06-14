@@ -221,7 +221,10 @@ async function run() {
             res.send(result)
         })
         app.get('/instructor', async (req, res) => {
-            const result = await classesCollections.find().toArray()
+            const query = {
+                status: 'approved'
+            }
+            const result = await classesCollections.find(query).toArray()
             res.send(result)
         })
         app.get('/instructor/:class', async (req, res) => {
